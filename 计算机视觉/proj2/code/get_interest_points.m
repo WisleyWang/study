@@ -41,67 +41,169 @@ function [x, y, confidence, scale, orientation] = get_interest_points(image, fea
 %function:
 %       Harris角点检测
 %注意：
-%       matlab自带的corner函数即可实现harris角点检测。但考虑到harris角点的经典性，本程序将其实现，纯粹出于学习目的，了解特征点检测的方法。
-%       其中所有参数均与matlab默认保持一致
-%referrence：
-%      Chris Harris & Mike Stephens，A COMBINED CORNER AND EDGE DETECTOR
-%date:2015-1-11
-%author:chenyanan
 %转载请注明出处：http://blog.csdn.net/u010278305
 
-%清空变量，读取图像
-clear;close all
-
-%计算X方向和Y方向的梯度及其平方
-X=imfilter(image,[-1 0 1]);
-X2=X.^2;
-Y=imfilter(image,[-1 0 1]');
-Y2=Y.^2;
-XY=X.*Y;
-
-%生成高斯卷积核，对X2、Y2、XY进行平滑
-h=fspecial('gaussian',[5 1],1.5);
-w=h*h';
-A=imfilter(X2,w);
-B=imfilter(Y2,w);
-C=imfilter(XY,w);
-
-%k一般取值0.04-0.06
-k=0.04;
-RMax=0;
-size=size(image);
-height=size(1);
-width=size(2);
-R=zeros(height,width);
-for h=1:height
-    for w=1:width
-        %计算M矩阵
-        M=[A(h,w) C(h,w);C(h,w) B(h,w)];
-        %计算R用于判断是否是边缘
-        R(h,w)=det(M) - k*(trace(M))^2;
-        %获得R的最大值，之后用于确定判断角点的阈值
-        if(R(h,w)>RMax)
-            RMax=R(h,w);
+% 
+% 
+% %计算X方向和Y方向的梯度及其平方
+% %fx=[-1,0,1;-2,0,2;-1,0,1]
+% %fy=[-1,-2,-1;0,0,0;1,2,1]
+% X=imfilter(image,[-1 0 1]);
+% X2=X.^2;
+% Y=imfilter(image,[-1 0 1]');
+% Y2=Y.^2;
+% XY=X.*Y;
+% 
+% %生成高斯卷积核，对X2、Y2、XY进行平滑
+% h=fspecial('gaussian',[5 1],1.5);
+% w=h*h';
+% A=imfilter(X2,w);
+% B=imfilter(Y2,w);
+% C=imfilter(XY,w);
+% 
+% %k一般取值0.04-0.06
+% k=0.04;
+% RMax=0;
+% [height,width]=size(image);
+% 
+% R=zeros(height,width);
+% for h=1:height
+%     for w=1:width
+%         %计算M矩阵
+%         M=[A(h,w) C(h,w);C(h,w) B(h,w)];
+%         %计算R用于判断是否是边缘
+%         R(h,w)=det(M) - k*(trace(M))^2;
+%         %获得R的最大值，之后用于确定判断角点的阈值
+%         if(R(h,w)>RMax)
+%             RMax=R(h,w);
+%         end
+%     end
+% end
+% 
+% 
+% %用Q*RMax作为阈值，判断一个点是不是角点
+% Q=0.01;
+% R_corner=(R>=(Q*RMax)).*R;
+% 
+% %非极大化抑制
+% %寻找3x3邻域内的最大值，只有一个交点在8邻域内是该邻域的最大点时，才认为该点是角点
+% fun = @(x) max(x(:)); 
+% %对R中[3,3]区域寻找最大值
+% R_localMax = nlfilter(R,[3 3],fun); 
+% 
+% %寻找既满足角点阈值，又在其8邻域内是最大值点的点作为角点
+% %注意：需要剔除边缘点
+% [y,x]=find(R_localMax(2:height-1,2:width-1)==R_corner(2:height-1,2:width-1));
+% 
+% x_indexleft = find(x <= feature_width/2 - 1);   %寻找x方向上左边边缘角点
+% %去除边缘角点
+% x(x_indexleft) = [];
+% y(x_indexleft) = [];
+% 
+% y_indexup = find(y <= feature_width/2 - 1);    %寻找y方向上部边缘角点
+% x(y_indexup) = [];
+% y(y_indexup) = [];
+% 
+% x_indexright = find(x > width - 8);       %寻找x方向右边的边缘角点
+% x(x_indexright) = [];
+% y(x_indexright) = [];
+% 
+% y_indexdown = find(y > height - 8);       %寻找y方向下部的边缘角点
+% x(y_indexdown) = [];
+% y(y_indexdown) = [];
+% %x(find(x<feature_width/2 - 1)) = [];
+% %y(find(y<feature_width/2 - 1)) = [];
+% 
+% 
+% 
+%     
+% 
+% end
+feature_width = 16;
+fx = [-1,0,1;-2,0,2;-1,0,1];
+fy = [-1,-2,-1;0,0,0;1,2,1];
+Ix = imfilter(image,fx);
+Iy = imfilter(image,fy);
+Ix2 = Ix.* Ix;
+%subplot(2,2,1);
+%imshow(Ix2);
+Ixy = Ix.* Iy;
+% subplot(2,2,2);
+% imshow(Ixy);
+Iy2 = Iy.* Iy;
+% subplot(2,2,3);
+% imshow(Iy2);
+h = fspecial('gaussian',25,2);
+% subplot(2,2,4);
+% imshow(h);
+Ix2 = imfilter(Ix2,h);
+Ixy = imfilter(Ixy,h);
+Iy2 = imfilter(Iy2,h);
+ 
+%寻找最大R值
+Rmax = 0;
+l = 0.05;
+[img_height,img_width] = size(image);
+M = zeros(img_height,img_width);
+for i = 1:img_height
+    for j = 1:img_width
+        A = [Ix2(i,j),Ixy(i,j);Ixy(i,j),Iy2(i,j)];
+        M(i,j) = det(A) -  l*(trace(A))^2;
+        if M(i,j) > Rmax
+            Rmax = M(i,j);
         end
     end
 end
+% 
+% %用Q*RMax作为阈值，判断一个点是不是角点
+% Q=0.01;
+% R_corner=(M>=(Q*Rmax)).*M;
+% % 
+% % %非极大化抑制
+% % %寻找3x3邻域内的最大值，只有一个交点在8邻域内是该邻域的最大点时，才认为该点是角点
+% fun = @(x) max(x(:)); 
+% % %对R中[3,3]区域寻找最大值
+% R_localMax = nlfilter(M,[3 3],fun); 
+% % 
+% % %寻找既满足角点阈值，又在其8邻域内是最大值点的点作为角点
+% % %注意：需要剔除边缘点
+%  [y,x]=find(R_localMax(2:img_height-1,2:img_width-1)==R_corner(2:img_height-1,2:img_width-1));
 
-%用Q*RMax作为阈值，判断一个点是不是角点
-Q=0.01;
-R_corner=(R>=(Q*RMax)).*R;
-
-%寻找3x3邻域内的最大值，只有一个交点在8邻域内是该邻域的最大点时，才认为该点是角点
-fun = @(x) max(x(:)); 
-%对R中[3,3]区域寻找最大值
-R_localMax = nlfilter(R,[feature_width feature_width],fun); 
-
-%寻找既满足角点阈值，又在其8邻域内是最大值点的点作为角点
-%注意：需要剔除边缘点
-[y,x]=find(R_localMax(2:height-1,2:width-1)==R_corner(2:height-1,2:width-1));
-
-
-
-
-
+%  
+%局部非极大值抑制
+k = 0.01;
+cnt = 0;   %记录角点数目
+result = zeros(img_height,img_width);
+for i=2:img_height-1
+    for j =2:img_width-1
+        if M(i,j)>k*Rmax && M(i,j)>M(i-1,j-1) && M(i,j)>M(i-1,j)&&M(i,j)>M(i-1,j+1)&&M(i,j)>M(i,j-1)&&M(i,j)>M(i,j+1)&&M(i,j)>M(i+1,j-1)&&M(i,j)>M(i+1,j)&&M(i,j)>M(i+1,j+1)
+            result(i,j) = 1;
+            cnt = cnt + 1;
+        end
+    end
+end
+%  
+[y,x] = find(result==1);
+x_indexleft = find(x <= feature_width/2 - 1);   %寻找x方向上左边边缘角点
+%去除边缘角点
+x(x_indexleft) = [];
+y(x_indexleft) = [];
+y_indexup = find(y <= feature_width/2 - 1);    %寻找y方向上部边缘角点
+x(y_indexup) = [];
+y(y_indexup) = [];
+x_indexright = find(x > img_width - 8);       %寻找x方向右边的边缘角点
+x(x_indexright) = [];
+y(x_indexright) = [];
+y_indexdown = find(y > img_height - 8);       %寻找y方向下部的边缘角点
+x(y_indexdown) = [];
+y(y_indexdown) = [];
+%x(find(x<feature_width/2 - 1)) = [];
+%y(find(y<feature_width/2 - 1)) = [];
+disp(length(x));    %显示角点数目
+figure;
+imshow(image);
+hold on;
+plot(x,y,'ro');
+hold off;
 end
 

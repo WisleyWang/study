@@ -9,28 +9,65 @@
 % you want to.
 function [ h ] = show_correspondence(image1, image2, X1, Y1, X2, Y2)
 
+[img1_height,img1_width]=size(image1);
+[img2_height,img2_width]=size(image2);
+
+
 h = figure;
 set(h, 'Position', [100 100 800 600])
-subplot(1,2,1);
-imshow(image1, 'Border', 'tight')
-subplot(1,2,2);
-imshow(image2, 'Border', 'tight')
-
-for i = 1:size(X1,1)
-    cur_color = rand(3,1);
-    subplot(1,2,1);
-    hold on;
-    plot(X1(i),Y1(i), 'o', 'LineWidth',2, 'MarkerEdgeColor','k',...
-                       'MarkerFaceColor', cur_color, 'MarkerSize',10)
-
-    hold off;
-   
-    subplot(1,2,2);
-    hold on;
-    plot(X2(i),Y2(i), 'o', 'LineWidth',2, 'MarkerEdgeColor','k',...
-                       'MarkerFaceColor', cur_color, 'MarkerSize',10)
-    hold off;
+% subplot(1,3,1);
+% imshow(image1, 'Border', 'tight')
+% subplot(1,3,2);
+% imshow(image2, 'Border', 'tight')
+% 
+% for i = 1:size(X1,1)
+%     cur_color = rand(3,1);
+%     subplot(1,3,1);
+%     hold on;
+%     plot(X1(i),Y1(i), 'o', 'LineWidth',2, 'MarkerEdgeColor','k',...
+%                        'MarkerFaceColor', cur_color, 'MarkerSize',10)
+% 
+%     hold off;
+%    
+%     subplot(1,3,2);
+%     hold on;
+%     plot(X2(i),Y2(i), 'o', 'LineWidth',2, 'MarkerEdgeColor','k',...
+%                        'MarkerFaceColor', cur_color, 'MarkerSize',10)
+%     hold off;
+%     
+% end
+pad=img1_height-img2_height;
+s=20;
+if pad>0
+   tmp=cat(1,ones(pad,img2_width),image2);
+   sinp=ones(size(tmp,1),s);
+   tmp=cat(2,sinp,tmp);
+   image=cat(2,image1,tmp);
+    Y2= Y2+pad;
+    X2=X2+s;
+else
+     tmp=cat(1,ones(-pad,img1_width),image1);
+     sinp=ones(size(tmp,1),s);
+     tmp=cat(2,tmp,sinp);
+     image=cat(2,tmp,image2);
+       Y1=Y1-pad;
+       X2=X2+s;
 end
+
+imshow(image, 'Border', 'tight')
+
+
+for i =1:size(X1,1)  
+    cur_color = rand(3,1);
+    hold on;
+    plot([X1(i),X2(i)+img1_width],[Y1(i),Y2(i)],'LineWidth',2, 'Color', 'b');
+    plot(X1(i),Y1(i), '+', 'LineWidth',2, 'MarkerEdgeColor',...
+                         cur_color, 'MarkerSize',8)
+                    plot(X2(i)+img1_width,Y2(i), '+', 'LineWidth',2,...
+                        'MarkerEdgeColor', cur_color, 'MarkerSize',8)
+    hold off; 
+end
+
 
 fprintf('Saving visualization to vis.jpg\n')
 visualization_image = frame2im(getframe(h));

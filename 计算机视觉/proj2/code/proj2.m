@@ -23,6 +23,8 @@ close all
 % need local features at multiple scales to handle harder cases.
 image1 = imread('../data/Notre Dame/921919841_a30df938f2_o.jpg');
 image2 = imread('../data/Notre Dame/4191453057_c86028ce1f_o.jpg');
+image1=imresize(image1, 0.7, 'bilinear');
+
 
 % You don't have to work with grayscale images. Matching with color
 % information might be helpful.
